@@ -2,9 +2,9 @@
 
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityRepository;
-use Illuminate\Auth\UserInterface;
+use Illuminate\Contracts\Hashing\Hasher as HasherContract;
+use Illuminate\Contracts\Auth\Authenticatable as UserContract;
 use Illuminate\Auth\UserProviderInterface;
-use Illuminate\Hashing\HasherInterface;
 
 class DoctrineUserProvider implements UserProviderInterface
 {
@@ -26,7 +26,7 @@ class DoctrineUserProvider implements UserProviderInterface
      * @param EntityManager $entityManager
      * @param $entity
      */
-    public function __construct(HasherInterface $hasher, EntityManager $entityManager, $entity)
+    public function __construct(HasherContract $hasher, EntityManager $entityManager, $entity)
     {
         $this->hasher = $hasher;
         $this->entityManager = $entityManager;
@@ -66,7 +66,7 @@ class DoctrineUserProvider implements UserProviderInterface
      * @param  string $token
      * @return void
      */
-    public function updateRememberToken(UserInterface $user, $token)
+    public function updateRememberToken(UserContract $user, $token)
     {
         $user->setRememberToken($token);
         $this->entityManager->persist($user);
@@ -96,7 +96,7 @@ class DoctrineUserProvider implements UserProviderInterface
      * @param  array $credentials
      * @return bool
      */
-    public function validateCredentials(UserInterface $user, array $credentials)
+    public function validateCredentials(UserContract $user, array $credentials)
     {
         return $this->hasher->check($credentials['password'], $user->getAuthPassword());
     }
