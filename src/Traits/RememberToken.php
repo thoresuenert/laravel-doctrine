@@ -5,10 +5,19 @@ use Doctrine\ORM\Mapping AS ORM;
 trait RememberToken
 {
     /**
-     * @ORM\Column(name="remember_token", type="string", nullable=true)
+     * @ORM\Column(name="rememberToken", type="string", nullable=true)
      */
     private $rememberToken;
 
+    private $keyName = 'id';
+    /**
+     * Get the identifier name: default id
+     * @return bool
+     */
+    public function getKeyName()
+    {
+        return $this->keyName;
+    }
     /**
      * Get the token value for the "remember me" session.
      *
@@ -37,7 +46,7 @@ trait RememberToken
      */
     public function getRememberTokenName()
     {
-        return 'remember_token';
+        return 'rememberToken';
     }
 
     /**

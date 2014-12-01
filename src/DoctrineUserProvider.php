@@ -9,7 +9,7 @@ use Illuminate\Auth\UserProviderInterface;
 class DoctrineUserProvider implements UserProviderInterface
 {
     /**
-     * @var HasherInterface
+     * @var HasherContract
      */
     private $hasher;
     /**
@@ -22,7 +22,7 @@ class DoctrineUserProvider implements UserProviderInterface
     private $entity;
 
     /**
-     * @param HasherInterface $hasher
+     * @param HasherContract $hasher
      * @param EntityManager $entityManager
      * @param $entity
      */
