@@ -115,7 +115,7 @@ class LaravelDoctrineServiceProvider extends ServiceProvider
             // create a driver chain for metadata reading
 
 
-            $metadata->setMetadataDriverImpl($this->buildDriverChain($cachedAnnotationReader, $config['metadata'], 'Portal'));
+            $metadata->setMetadataDriverImpl($this->buildDriverChain($cachedAnnotationReader, $config['metadata'], $config['app_namespace']));
 
             // EventManager
             $eventManager = new EventManager;

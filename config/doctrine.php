@@ -5,6 +5,7 @@ return [
     'metadata' => [
 //         base_path('app/models')
     ],
+    'app_namespace' => null,
 
     'proxy' => [
         'auto_generate' => false,
