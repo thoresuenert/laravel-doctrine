@@ -88,8 +88,8 @@ class LaravelDoctrineServiceProvider extends ServiceProvider
     {
         $this->app->singleton(EntityManager::class, function ($app) {
             $config = $app['config']['doctrine::doctrine'];
-            // workbench: __DIR__
-            $basePath = __DIR__.'/..'; //$app['path.base'];
+            // workbench: __DIR__.'/..';
+            $basePath = $app['path.base'];
             $this->autoLoadFiles($basePath, $config['doctrine_extension']);
 
             $metadata = Setup::createConfiguration(
