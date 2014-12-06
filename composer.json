@@ -14,8 +14,7 @@
         "php": ">=5.5.0",
         "illuminate/support": "4.*|5.*",
         "doctrine/orm": "2.5.*",
-        "doctrine/migrations": "1.*",
-        "gedmo/doctrine-extensions": "2.3.*@dev"
+        "doctrine/migrations": "1.*"
     },
 	"require-dev": {
 		"mockery/mockery": "dev-master",
