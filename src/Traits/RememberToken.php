@@ -10,6 +10,8 @@ trait RememberToken
     private $rememberToken;
 
     private $keyName = 'id';
+
+    private $rememberTokenName = 'rememberToken';
     /**
      * Get the identifier name: default id
      * @return bool
@@ -46,7 +48,7 @@ trait RememberToken
      */
     public function getRememberTokenName()
     {
-        return 'rememberToken';
+        return $this->rememberTokenName;
     }
 
     /**

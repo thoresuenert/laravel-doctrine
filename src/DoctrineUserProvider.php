@@ -5,6 +5,7 @@ use Doctrine\ORM\EntityRepository;
 use Illuminate\Contracts\Hashing\Hasher as HasherContract;
 use Illuminate\Contracts\Auth\Authenticatable as UserContract;
 use Illuminate\Auth\UserProviderInterface;
+use ReflectionClass;
 
 class DoctrineUserProvider implements UserProviderInterface
 {
@@ -118,6 +119,7 @@ class DoctrineUserProvider implements UserProviderInterface
      */
     private function getEntity()
     {
-        return new $this->entity;
+        $refEntity = new ReflectionClass($this->entity);
+        return $refEntity->newInstanceWithoutConstructor();
     }
 }

@@ -1,9 +1,9 @@
-<?php namespace Mitch\LaravelDoctrine\EventListeners;
+<?php namespace Mitch\LaravelDoctrine\Extensions\SoftDeleteable;
 
 use Doctrine\ORM\Event\OnFlushEventArgs;
 use DateTime;
 
-class SoftDeletableListener
+class SoftDeleteableListener
 {
     public function onFlush(OnFlushEventArgs $event)
     {
@@ -30,6 +30,6 @@ class SoftDeletableListener
 
     private function isSoftDeletable($entity)
     {
-        return array_key_exists('Mitch\LaravelDoctrine\Traits\SoftDeletes', class_uses($entity));
+        return array_key_exists('Mitch\LaravelDoctrine\Extensions\SoftDeleteable\SoftDeletesTrait', class_uses($entity));
     }
 }

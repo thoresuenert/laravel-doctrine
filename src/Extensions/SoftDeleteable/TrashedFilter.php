@@ -1,4 +1,4 @@
-<?php namespace Mitch\LaravelDoctrine\Filters;
+<?php namespace Mitch\LaravelDoctrine\Extensions\SoftDeleteable;
 
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Query\Filter\SQLFilter;
@@ -12,6 +12,6 @@ class TrashedFilter extends SQLFilter
 
     private function isSoftDeletable($entity)
     {
-        return array_key_exists('Mitch\LaravelDoctrine\Traits\SoftDeletes', class_uses($entity));
+        return array_key_exists('Mitch\LaravelDoctrine\Extensions\SoftDeleteable\SoftDeletesTrait', class_uses($entity));
     }
 }

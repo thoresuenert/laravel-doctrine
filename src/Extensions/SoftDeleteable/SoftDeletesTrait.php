@@ -1,9 +1,9 @@
-<?php namespace Mitch\LaravelDoctrine\Traits;
+<?php namespace Mitch\LaravelDoctrine\Extensions\SoftDeleteable;
 
 use Doctrine\ORM\Mapping AS ORM;
 use DateTime;
 
-trait SoftDeletes
+trait SoftDeletesTrait
 {
     /**
      * @ORM\Column(name="deleted_at", type="datetime", nullable=true)

@@ -3,9 +3,8 @@
 return [
     'simple_annotations' => false,
     'metadata' => [
-//         base_path('app/models')
+//      base_path('app/models')
     ],
-    'app_namespace' => null,
 
     'proxy' => [
         'auto_generate' => false,
@@ -34,11 +33,7 @@ return [
 
     'logger' => null,
 
-    // doctrine extensions
-    // Available: false, true
-    'doctrine_extension' => true,
-
     // Available: Translatable, Loggable, Tree, Sluggable, Timestampable, Blameable,
-    //            Sortable, Translator, Softdeleteable, Uploadable, References, IpTraceable
-    'listeners' => ['Gedmo\Sortable\SortableListener']
+    //            Sortable, Translator, SoftDeleteable, Uploadable, References, IpTraceable
+    'extensions' => []
 ];

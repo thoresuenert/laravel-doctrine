@@ -7,9 +7,7 @@ use Doctrine\Common\Annotations\CachedReader;
 use Doctrine\Common\Cache\Cache as DoctrineCache;
 use Doctrine\Common\Persistence\Mapping\Driver\MappingDriverChain;
 use Doctrine\ORM\Mapping\Driver\AnnotationDriver;
-use Gedmo;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Events;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Mapping\ClassMetadataFactory;
 use Doctrine\ORM\Tools\Setup;
@@ -20,9 +18,9 @@ use Mitch\LaravelDoctrine\Cache;
 use Mitch\LaravelDoctrine\Configuration\DriverMapper;
 use Mitch\LaravelDoctrine\Configuration\SqlMapper;
 use Mitch\LaravelDoctrine\Configuration\SqliteMapper;
-use Mitch\LaravelDoctrine\EventListeners\SoftDeletableListener;
-use Mitch\LaravelDoctrine\Filters\TrashedFilter;
-use ReflectionClass;
+use Mitch\LaravelDoctrine\Extensions\ExtendedClassMetadataFactory;
+use Mitch\LaravelDoctrine\Extensions\ExtendedEntityManager;
+use Mitch\LaravelDoctrine\Extensions\ExtendedMappingDriverChain;
 
 class LaravelDoctrineServiceProvider extends ServiceProvider
 {
@@ -89,8 +87,9 @@ class LaravelDoctrineServiceProvider extends ServiceProvider
         $this->app->singleton(EntityManager::class, function ($app) {
             $config = $app['config']['doctrine::doctrine'];
             // workbench: __DIR__.'/..';
-            $basePath = $app['path.base'];
-            $this->autoLoadFiles($basePath, $config['doctrine_extension']);
+            $basePath = __DIR__.'/..';
+//            $basePath = $app['path.base'];
+            AnnotationRegistry::registerFile($basePath."/vendor/doctrine/orm/lib/Doctrine/ORM/Mapping/Driver/DoctrineAnnotations.php");
 
             $metadata = Setup::createConfiguration(
                 $app['config']['app.debug'],
@@ -98,35 +97,42 @@ class LaravelDoctrineServiceProvider extends ServiceProvider
                 $app[CacheManager::class]->getCache($config['cache_provider'])
             );
 
-            $metadata->addFilter('trashed', TrashedFilter::class);
             $metadata->setAutoGenerateProxyClasses($config['proxy']['auto_generate']);
             $metadata->setDefaultRepositoryClassName($config['repository']);
             $metadata->setSQLLogger($config['logger']);
+            $metadata->setClassMetadataFactoryName(ExtendedClassMetadataFactory::class);
 
             if (isset($config['proxy']['namespace']))
                 $metadata->setProxyNamespace($config['proxy']['namespace']);
 
-
-            // Second configure ORM
             // globally used cache driver, in production use APC or memcached
             $cache = $metadata->getMetadataCacheImpl();
             // standard annotation reader
             $cachedAnnotationReader = $this->buildAnnotaionReader($cache);
             // create a driver chain for metadata reading
+            $driverChain = new ExtendedMappingDriverChain();
 
+            $defaultDriver = new AnnotationDriver(
+                $cachedAnnotationReader, // our cached annotation reader
+                (array) $config['metadata'] // paths to look in
+            );
 
-            $metadata->setMetadataDriverImpl($this->buildDriverChain($cachedAnnotationReader, $config['metadata'], $config['app_namespace']));
+            $driverChain->setDefaultDriver($defaultDriver);
+            // add driverChain
+            $metadata->setMetadataDriverImpl($driverChain);
 
             // EventManager
             $eventManager = new EventManager;
-            $eventManager->addEventListener(Events::onFlush, new SoftDeletableListener);
-
-            // load all listeners from config
-            $this->loadEventListeners($config['listeners'],$cachedAnnotationReader, $eventManager);
 
             // EntityManager
             $entityManager = EntityManager::create($this->mapLaravelToDoctrineConfig($app['config']), $metadata, $eventManager);
-            $entityManager->getFilters()->enable('trashed');
+
+            // load extensions
+            foreach($config['extensions'] as $name)
+            {
+                $this->loadExtension($name, $metadata, $config, $driverChain, $cachedAnnotationReader, $entityManager, $eventManager);
+            }
+
             return $entityManager;
         });
         $this->app->singleton(EntityManagerInterface::class, EntityManager::class);
@@ -182,26 +188,7 @@ class LaravelDoctrineServiceProvider extends ServiceProvider
     }
 
     /**
-     * Load annotaions and lib for doctrine and extension if needed
-     * @param $basePath
-     * @param bool $loadExtension
-     */
-    private function autoLoadFiles($basePath,$loadExtension = false)
-    {
-        if($loadExtension)
-        {
-            $namespace = 'Gedmo\Mapping\Annotation';
-            $lib = 'vendor/gedmo/doctrine-extensions/lib';
-            AnnotationRegistry::registerAutoloadNamespace($namespace, $lib);
-
-            Gedmo\DoctrineExtensions::registerAnnotations();
-        }
-
-        AnnotationRegistry::registerFile($basePath."/vendor/doctrine/orm/lib/Doctrine/ORM/Mapping/Driver/DoctrineAnnotations.php");
-    }
-
-    /**
-     * @param Cache $cache
+     * @param DoctrineCache $cache
      * @return CachedReader
      */
     private function buildAnnotaionReader(DoctrineCache $cache)
@@ -214,47 +201,38 @@ class LaravelDoctrineServiceProvider extends ServiceProvider
     }
 
     /**
+     * @param MappingDriverChain $driverChain
      * @param CachedReader $cachedAnnotationReader
-     * @param array $path
-     * @param $namespace
+     * @param array $metadata
      * @return MappingDriverChain
      */
-    private function buildDriverChain(CachedReader $cachedAnnotationReader, Array $path, $namespace)
+    private function registerMetadata(MappingDriverChain $driverChain, CachedReader $cachedAnnotationReader, Array $metadata)
     {
-        $driverChain = new MappingDriverChain();
-        // load superclass metadata mapping only, into driver chain
-        // also registers Gedmo annotations.NOTE: you can personalize it
-        Gedmo\DoctrineExtensions::registerAbstractMappingIntoDriverChainORM(
-            $driverChain, // our metadata driver chain, to hook into
-            $cachedAnnotationReader // our cached annotation reader
-        );
-        // now we want to register our application entities,
-        // for that we need another metadata driver used for Entity namespace
-        $annotationDriver = new AnnotationDriver(
-            $cachedAnnotationReader, // our cached annotation reader
-            (array) $path// paths to look in
-        );
-        // NOTE: driver for application Entity can be different, Yaml, Xml or whatever
-        // register annotation driver for our application Entity namespace
-        $driverChain->addDriver($annotationDriver, $namespace);
-
-        return $driverChain;
+        foreach($metadata as $namespace => $path)
+        {
+            $annotationDriver = new AnnotationDriver(
+                $cachedAnnotationReader, // our cached annotation reader
+                (array) $path// paths to look in
+            );
+            // NOTE: driver for application Entity can be different, Yaml, Xml or whatever
+            // register annotation driver for our application Entity namespace
+            $driverChain->addDriver($annotationDriver, $namespace);
+        }
     }
 
+
     /**
-     * @param array $listeners
-     * @param CachedReader $cachedAnnotationReader
-     * @param EventManager $eventManager
+     * Load an extension from config
+     * @param $name
+     * @param $metadata
+     * @param $driverChain
+     * @param $cachedAnnotationReader
+     * @param $entityManager
+     * @param $eventManager
      */
-    private function loadEventListeners(Array $listeners, CachedReader $cachedAnnotationReader, EventManager $eventManager)
+    private function loadExtension($name, $metadata, $config, $driverChain, $cachedAnnotationReader, $entityManager, $eventManager)
     {
-        foreach($listeners as $listener)
-        {
-            $eventListener = new $listener();
-            $eventListener->setAnnotationReader($cachedAnnotationReader);
-            $eventManager->addEventSubscriber($eventListener);
-
-        }
-
+        $extensionProvider = 'Mitch\LaravelDoctrine\Extensions\\'.$name.'\\'.$name.'Provider';
+        call_user_func_array(array($extensionProvider, "loadExtension"), array($metadata, $config, $driverChain, $cachedAnnotationReader, $entityManager, $eventManager));
     }
 }
