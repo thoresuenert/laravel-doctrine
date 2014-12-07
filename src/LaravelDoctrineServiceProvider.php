@@ -200,26 +200,6 @@ class LaravelDoctrineServiceProvider extends ServiceProvider
         );
     }
 
-    /**
-     * @param MappingDriverChain $driverChain
-     * @param CachedReader $cachedAnnotationReader
-     * @param array $metadata
-     * @return MappingDriverChain
-     */
-    private function registerMetadata(MappingDriverChain $driverChain, CachedReader $cachedAnnotationReader, Array $metadata)
-    {
-        foreach($metadata as $namespace => $path)
-        {
-            $annotationDriver = new AnnotationDriver(
-                $cachedAnnotationReader, // our cached annotation reader
-                (array) $path// paths to look in
-            );
-            // NOTE: driver for application Entity can be different, Yaml, Xml or whatever
-            // register annotation driver for our application Entity namespace
-            $driverChain->addDriver($annotationDriver, $namespace);
-        }
-    }
-
 
     /**
      * Load an extension from config

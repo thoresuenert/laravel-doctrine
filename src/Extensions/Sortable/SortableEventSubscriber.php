@@ -1,6 +1,5 @@
 <?php namespace Mitch\LaravelDoctrine\Extensions\Sortable;
 
-
 use Doctrine\Common\EventSubscriber;
 use Doctrine\Common\Persistence\Event\LifecycleEventArgs;
 use Doctrine\ORM\Event\PreUpdateEventArgs;
@@ -8,10 +7,20 @@ use Doctrine\ORM\Events;
 use Mitch\LaravelDoctrine\Extensions\Sortable\Mapping\Annotation\Sortable as Annotation;
 
 
+/**
+ * Class SortableEventSubscriber
+ * @package Mitch\LaravelDoctrine\Extensions\Sortable
+ */
 class SortableEventSubscriber implements EventSubscriber
 {
+    /**
+     * @var
+     */
     private $maxIndex;
 
+    /**
+     * @return array
+     */
     public function getSubscribedEvents()
     {
         return array(
@@ -20,41 +29,54 @@ class SortableEventSubscriber implements EventSubscriber
             Events::preUpdate
         );
     }
-
-    public function prePersist(LifecycleEventArgs $event)
+    /**
+     * @param LifecycleEventArgs $event
+     * @param $entity
+     * @return array
+     */
+    protected function boot(LifecycleEventArgs $event, $entity)
     {
-        $entity = $event->getEntity();
-
-        if ($this->isNotSortable($entity))
-            return;
-
+        $em = $event->getEntityManager();
         $class = get_class($entity);
         $meta = $event->getEntityManager()->getClassMetadata($class);
         $sortable = $meta->getExtensionData('Sortable');
+        $indexFieldName = $sortable->getIndexFieldName();
+        $groupFieldName = $sortable->getGroupFieldName();
+        return array($em, $class, $meta, $sortable, $indexFieldName, $groupFieldName);
+    }
 
+    /**
+     * @param LifecycleEventArgs $event
+     */
+    public function prePersist(LifecycleEventArgs $event)
+    {
+        $entity = $event->getEntity();
+        if ($this->isNotSortable($entity))
+            return;
 
-        $em = $event->getEntityManager();
+        list($em, $class, $meta, $sortable, $indexFieldName, $groupFieldName) = $this->boot($event, $entity);
 
         // read maxIndex from database
-        $this->getMaxIndex($class, $entity, $em, $sortable);
+        $this->getMaxIndex($class, $entity, $em, $sortable, $meta);
 
         // sanitize the index: -1, 0 , null or set to an integer
-        $sanitizeIndex = $this->sanitizeIndex($this->getIndex($entity, $sortable));
-        $this->setIndex($entity,$sortable, $sanitizeIndex);
+        $indexValue = $meta->getFieldValue($entity, $indexFieldName );
+        $indexValue = $this->sanitizeIndex($indexValue);
+        $meta->setFieldValue($entity, $indexFieldName, $indexValue);
 
-
-        $dql = "UPDATE {$class} n";
-        $dql .= " SET n.{$sortable->getIndexColumnName()} = n.{$sortable->getIndexColumnName()} + 1";
-        $dql .= " WHERE n.{$sortable->getIndexColumnName()} >= {$sanitizeIndex}";
+        $queryBuilder = $em->createQueryBuilder();
+        $queryBuilder->update($class, "n")
+            ->set("n.{$indexFieldName}","n.{$indexFieldName} + 1")
+            ->where("n.{$indexFieldName} >= :index")
+            ->setParameter('index', $indexValue);
 
         if ($sortable->hasGroup()) {
-            $group = $this->getGroup($entity,$sortable);
-            $dql .= " AND n.{$sortable->getGroupColumnName()} = {$group}";
+            $queryBuilder->andWhere("n.{$groupFieldName} = :group")
+                ->setParameter('group', $this->getGroup($em, $entity,$sortable, $meta) );
         }
 
-
-        $q = $em->createQuery($dql);
-        $q->getSingleScalarResult();
+        $query = $queryBuilder->getQuery();
+        $query->getSingleScalarResult();
     }
 
     /**
@@ -67,56 +89,51 @@ class SortableEventSubscriber implements EventSubscriber
         if ($this->isNotSortable($entity))
             return;
 
-        $class = get_class($entity);
-        $meta = $event->getEntityManager()->getClassMetadata($class);
-        $sortable = $meta->getExtensionData('Sortable');
-
+        list($em, $class, $meta, $sortable, $indexFieldName, $groupFieldName) = $this->boot($event, $entity);
 
         // sortable index does not changed: do nothing
-        if (!$event->hasChangedField($sortable->getIndexColumnName()))
+        if (!$event->hasChangedField($indexFieldName))
             return;
 
-        $em = $event->getEntityManager();
-
         // read maxIndex from database
-        $this->getMaxIndex($class, $entity, $em, $sortable);
+        $this->getMaxIndex($class, $entity, $em, $sortable, $meta);
 
         // sanitize position
-        $newValue = $event->getNewValue($sortable->getIndexColumnName());
+        $newValue = $event->getNewValue($indexFieldName);
         $newValue = $this->sanitizeIndex($newValue);
-        $event->setNewValue($sortable->getIndexColumnName(), $newValue);
+        $event->setNewValue($indexFieldName, $newValue);
 
         // get old position for update query calculations
-        $oldValue = $event->getOldValue($sortable->getIndexColumnName());
+        $oldValue = $event->getOldValue($indexFieldName);
 
         if ($oldValue < $newValue) {
-            $sign = '-';
-            $params['lower'] = $oldValue;
-            $params['upper'] = $newValue;
+            $sign = '-'; $lower = $oldValue; $upper = $newValue;
         } else {
-            $sign = '+';
-            $params['lower'] = $newValue;
-            $params['upper'] = $oldValue;
+            $sign = '+'; $lower = $newValue; $upper = $oldValue;
         }
 
-        $dql = "UPDATE {$class} n";
-        $dql .= " SET n.{$sortable->getIndexColumnName()} = n.{$sortable->getIndexColumnName()} {$sign} 1";
-        $dql .= " WHERE n.{$sortable->getIndexColumnName()} >= :lower";
-        $dql .= " AND n.{$sortable->getIndexColumnName()} <= :upper";
+        $queryBuilder = $em->createQueryBuilder();
+        $queryBuilder->update($class,"n")
+            ->set("n.{$indexFieldName}", "n.{$indexFieldName} {$sign} 1")
+            ->where("n.{$indexFieldName} >= :lower")
+            ->andWhere("n.{$indexFieldName} <= :upper")
+            ->setParameters([
+                "lower" => $lower,
+                "upper" => $upper
+            ]);
 
         if ($sortable->hasGroup()) {
-            $dql .= " AND n.{$sortable->getGroupColumnName()} = :group";
-            $params['group'] = $this->getGroup($entity,$sortable);
+            $queryBuilder->andWhere("n.{$groupFieldName} = :group")
+                ->setParameter('group', $this->getGroup($em, $entity,$sortable, $meta) );
         }
 
-
-
-        $q = $em->createQuery($dql);
-        $q->setParameters($params);
-        $q->getSingleScalarResult();
-
+        $query = $queryBuilder->getQuery();
+        $query->getSingleScalarResult();
     }
 
+    /**
+     * @param LifecycleEventArgs $event
+     */
     public function postRemove(LifecycleEventArgs $event)
     {
         $entity = $event->getEntity();
@@ -124,30 +141,31 @@ class SortableEventSubscriber implements EventSubscriber
         if ($this->isNotSortable($entity))
             return;
 
-        $class = get_class($entity);
-        $meta =  $event->getEntityManager()->getClassMetadata($class);
-        $sortable = $meta->getExtensionData('Sortable');
-
+        list($em, $class, $meta, $sortable, $indexFieldName, $groupFieldName) = $this->boot($event, $entity);
 
         // build the update dql string
-        $dql = "UPDATE {$class} n";
-        $dql .= " SET n.{$sortable->getIndexColumnName()} = n.{$sortable->getIndexColumnName()} - 1";
-        $dql .= " WHERE n.{$sortable->getIndexColumnName()} >= :lower";
-        $params['lower'] = $this->getIndex($entity, $sortable);
+        $queryBuilder = $em->createQueryBuilder();
+        $queryBuilder->update($class, "n")
+            ->set("n.{$indexFieldName}", "n.{$indexFieldName} - 1")
+            ->where("WHERE n.{$indexFieldName} >= :lower")
+            ->setParameter('lower', $meta->getFieldValue($entity, $indexFieldName));
 
         if ($sortable->hasGroup()) {
-            $dql .= " AND n.{$sortable->getGroupColumnName()} = :group";
-            $params['group'] = $this->getGroup($entity,$sortable);
+            $queryBuilder->andWhere("n.{$groupFieldName} = :group")
+                ->setParameter('group', $this->getGroup($em, $entity, $groupFieldName, $meta));
         }
         // process dql query
-        $em = $event->getEntityManager();
-        $q = $em->createQuery($dql);
-        $q->setParameters($params);
-        $q->getSingleScalarResult();
+        $query = $queryBuilder->getQuery();
+        $query->getSingleScalarResult();
 
     }
 
 
+    /**
+     * Index can be 0, -1, NULL or defined <= maxIndex
+     * @param $index
+     * @return mixed
+     */
     private function sanitizeIndex($index)
     {
         if($index < 0 || $index > $this->maxIndex || is_null($index))
@@ -156,23 +174,37 @@ class SortableEventSubscriber implements EventSubscriber
         return $index;
     }
 
+    /**
+     * @param $entity
+     * @return bool
+     */
     private function isNotSortable($entity)
     {
         return !$entity instanceof Sortable;
     }
 
 
-    private function getMaxIndex($class, $entity, $em, Annotation $sortable)
+    /**
+     * Get max index from database for entity by group if needed
+     * @param $class
+     * @param $entity
+     * @param $em
+     * @param Annotation $sortable
+     * @param $meta
+     */
+    private function getMaxIndex($class, $entity, $em, Annotation $sortable, $meta)
     {
-        $dql = "SELECT MAX(n.{$sortable->getIndexColumnName()})";
-        $dql .= " FROM {$class} n";
+        $queryBuilder = $em->createQueryBuilder();
+        $queryBuilder->select("MAX(n.{$sortable->getIndexFieldName()})")->from($class,'n');
+
         if($sortable->hasGroup())
         {
-            $group = $this->getGroup($entity,$sortable);
-            $dql .= " WHERE n.{$sortable->getGroupColumnName()} = {$group}";
+            $groupFieldName = $sortable->getGroupFieldName();
+            $queryBuilder->where("n.{$groupFieldName} = :group")
+                ->setParameter(':group', $this->getGroup($em, $entity, $groupFieldName, $meta));
         }
 
-        $query = $em->createQuery($dql);
+        $query = $queryBuilder->getQuery();
         $query->useQueryCache(false);
         $query->useResultCache(false);
         $maxIndex = $query->getSingleScalarResult();
@@ -181,22 +213,27 @@ class SortableEventSubscriber implements EventSubscriber
         $this->maxIndex = intval($maxIndex);
     }
 
-    private function getGroup($entity, $sortable)
+    /**
+     * Get group value, if association get id
+     * @param $em
+     * @param $entity
+     * @param $groupFieldName
+     * @param $meta
+     * @return mixed
+     */
+    private function getGroup($em, $entity, $groupFieldName, $meta)
     {
-        $group = $entity->{$sortable->getGroup()}();
-        // check if group is an object
+        $group = $meta->getFieldValue($entity, $groupFieldName);
+        // if the group is an associated object
+        // we need to resolve the identifier from the object
         if( is_object($group))
-            return $group->getId();
+        {
+            $meta = $em->getClassMetadata(get_class($group));
+            return $meta->getSingleIdReflectionProperty()->getValue($group);
+        }
+
         return $group;
     }
-    private function getIndex($entity, $sortable)
-    {
-        return  $entity->{$sortable->getIndex()}();
 
-    }
 
-    private function setIndex($entity, $sortable, $sanitizeIndex)
-    {
-        $entity->{$sortable->setIndex()}($sanitizeIndex);
-    }
 }

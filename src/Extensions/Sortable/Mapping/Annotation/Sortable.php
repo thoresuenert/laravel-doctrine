@@ -17,15 +17,6 @@ final class Sortable implements Annotation{
      */
     public $group;
 
-//    /**
-//     * @param array $values
-//     */
-//    public function __construct(array $values)
-//    {
-//        $this->index = $values['index'];
-//        $this->group = isset($values['group'])? $values['group'] : false;
-//    }
-
     /**
      * @return mixed
      */
@@ -54,12 +45,12 @@ final class Sortable implements Annotation{
         return (bool) $this->group;
     }
 
-    public function getIndexColumnName()
+    public function getIndexFieldName()
     {
         return $this->index;
     }
 
-    public function getGroupColumnName()
+    public function getGroupFieldName()
     {
         return $this->index;
     }
