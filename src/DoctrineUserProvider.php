@@ -37,7 +37,7 @@ class DoctrineUserProvider implements UserProviderInterface
      * Retrieve a user by their unique identifier.
 
      * @param  mixed $identifier
-     * @return UserInterface|null
+     * @return UserContract|null
      */
     public function retrieveById($identifier)
     {
@@ -49,7 +49,7 @@ class DoctrineUserProvider implements UserProviderInterface
 
      * @param  mixed $identifier
      * @param  string $token
-     * @return UserInterface|null
+     * @return UserContract|null
      */
     public function retrieveByToken($identifier, $token)
     {
@@ -63,7 +63,7 @@ class DoctrineUserProvider implements UserProviderInterface
     /**
      * Update the "remember me" token for the given user in storage.
 
-     * @param  UserInterface $user
+     * @param  UserContract $user
      * @param  string $token
      * @return void
      */
@@ -78,7 +78,7 @@ class DoctrineUserProvider implements UserProviderInterface
      * Retrieve a user by the given credentials.
 
      * @param  array $credentials
-     * @return UserInterface|null
+     * @return UserContract|null
      */
     public function retrieveByCredentials(array $credentials)
     {
@@ -93,7 +93,7 @@ class DoctrineUserProvider implements UserProviderInterface
     /**
      * Validate a user against the given credentials.
 
-     * @param  UserInterface $user
+     * @param  UserContract $user
      * @param  array $credentials
      * @return bool
      */

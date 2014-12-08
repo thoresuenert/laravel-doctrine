@@ -9,16 +9,13 @@ trait RememberToken
      */
     private $rememberToken;
 
-    private $keyName = 'id';
-
-    private $rememberTokenName = 'rememberToken';
     /**
      * Get the identifier name: default id
      * @return bool
      */
     public function getKeyName()
     {
-        return $this->keyName;
+        return 'id';
     }
     /**
      * Get the token value for the "remember me" session.
@@ -48,7 +45,7 @@ trait RememberToken
      */
     public function getRememberTokenName()
     {
-        return $this->rememberTokenName;
+        return 'rememberToken';
     }
 
     /**

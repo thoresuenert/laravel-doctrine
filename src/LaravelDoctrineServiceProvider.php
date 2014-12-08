@@ -87,8 +87,8 @@ class LaravelDoctrineServiceProvider extends ServiceProvider
         $this->app->singleton(EntityManager::class, function ($app) {
             $config = $app['config']['doctrine::doctrine'];
             // workbench: __DIR__.'/..';
-            $basePath = __DIR__.'/..';
-//            $basePath = $app['path.base'];
+//            $basePath = __DIR__.'/..';
+            $basePath = $app['path.base'];
             AnnotationRegistry::registerFile($basePath."/vendor/doctrine/orm/lib/Doctrine/ORM/Mapping/Driver/DoctrineAnnotations.php");
 
             $metadata = Setup::createConfiguration(
