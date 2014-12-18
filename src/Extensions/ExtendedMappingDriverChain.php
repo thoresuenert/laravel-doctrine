@@ -67,15 +67,13 @@ class ExtendedMappingDriverChain implements  MappingDriver{
      */
     public function loadMetadataForClass($className, ClassMetadata $metadata)
     {
-        /* @var $driver MappingDriver */
-        foreach ($this->drivers as $driver) {
-                $driver->loadMetadataForClass($className, $metadata);
-        }
-
         if (null !== $this->defaultDriver) {
             $this->defaultDriver->loadMetadataForClass($className, $metadata);
         }
-
+        /* @var $driver MappingDriver */
+        foreach ($this->drivers as $driver) {
+            $driver->loadMetadataForClass($className, $metadata);
+        }
     }
 
     /**
@@ -91,11 +89,6 @@ class ExtendedMappingDriverChain implements  MappingDriver{
      */
     public function isTransient($className)
     {
-        /* @var $driver MappingDriver */
-        foreach ($this->drivers as $driver) {
-                return $driver->isTransient($className);
-        }
-
         if ($this->defaultDriver !== null) {
             return $this->defaultDriver->isTransient($className);
         }

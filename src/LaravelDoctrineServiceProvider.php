@@ -4,6 +4,7 @@ use App;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Annotations\CachedReader;
+use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\Common\Cache\Cache as DoctrineCache;
 use Doctrine\Common\Persistence\Mapping\Driver\MappingDriverChain;
 use Doctrine\ORM\Mapping\Driver\AnnotationDriver;
@@ -19,7 +20,6 @@ use Mitch\LaravelDoctrine\Configuration\DriverMapper;
 use Mitch\LaravelDoctrine\Configuration\SqlMapper;
 use Mitch\LaravelDoctrine\Configuration\SqliteMapper;
 use Mitch\LaravelDoctrine\Extensions\ExtendedClassMetadataFactory;
-use Mitch\LaravelDoctrine\Extensions\ExtendedEntityManager;
 use Mitch\LaravelDoctrine\Extensions\ExtendedMappingDriverChain;
 
 class LaravelDoctrineServiceProvider extends ServiceProvider
@@ -87,8 +87,8 @@ class LaravelDoctrineServiceProvider extends ServiceProvider
         $this->app->singleton(EntityManager::class, function ($app) {
             $config = $app['config']['doctrine::doctrine'];
             // workbench: __DIR__.'/..';
-//            $basePath = __DIR__.'/..';
-            $basePath = $app['path.base'];
+            $basePath = __DIR__.'/..';
+//            $basePath = $app['path.base'];
             AnnotationRegistry::registerFile($basePath."/vendor/doctrine/orm/lib/Doctrine/ORM/Mapping/Driver/DoctrineAnnotations.php");
 
             $metadata = Setup::createConfiguration(
@@ -111,7 +111,6 @@ class LaravelDoctrineServiceProvider extends ServiceProvider
             $cachedAnnotationReader = $this->buildAnnotaionReader($cache);
             // create a driver chain for metadata reading
             $driverChain = new ExtendedMappingDriverChain();
-
             $defaultDriver = new AnnotationDriver(
                 $cachedAnnotationReader, // our cached annotation reader
                 (array) $config['metadata'] // paths to look in
@@ -193,9 +192,8 @@ class LaravelDoctrineServiceProvider extends ServiceProvider
      */
     private function buildAnnotaionReader(DoctrineCache $cache)
     {
-        $annotationReader = new AnnotationReader();
         return new CachedReader(
-            $annotationReader, // use reader
+            new AnnotationReader(), // use reader
             $cache // and a cache driver
         );
     }

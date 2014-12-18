@@ -28,6 +28,6 @@ class SortableDriver extends AnnotationDriver {
 
             $metadata->addExtensionData('Sortable',$sortableAnnotation);
         }
-
+        return;
     }
 }

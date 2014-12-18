@@ -72,7 +72,7 @@ class SortableEventSubscriber implements EventSubscriber
 
         if ($sortable->hasGroup()) {
             $queryBuilder->andWhere("n.{$groupFieldName} = :group")
-                ->setParameter('group', $this->getGroup($em, $entity,$sortable, $meta) );
+                ->setParameter('group', $this->getGroup($em, $entity, $groupFieldName, $meta) );
         }
 
         $query = $queryBuilder->getQuery();
@@ -124,7 +124,7 @@ class SortableEventSubscriber implements EventSubscriber
 
         if ($sortable->hasGroup()) {
             $queryBuilder->andWhere("n.{$groupFieldName} = :group")
-                ->setParameter('group', $this->getGroup($em, $entity,$sortable, $meta) );
+                ->setParameter('group', $this->getGroup($em, $entity,$groupFieldName, $meta) );
         }
 
         $query = $queryBuilder->getQuery();
@@ -147,7 +147,7 @@ class SortableEventSubscriber implements EventSubscriber
         $queryBuilder = $em->createQueryBuilder();
         $queryBuilder->update($class, "n")
             ->set("n.{$indexFieldName}", "n.{$indexFieldName} - 1")
-            ->where("WHERE n.{$indexFieldName} >= :lower")
+            ->where("n.{$indexFieldName} >= :lower")
             ->setParameter('lower', $meta->getFieldValue($entity, $indexFieldName));
 
         if ($sortable->hasGroup()) {
