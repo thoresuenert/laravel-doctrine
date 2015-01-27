@@ -4,10 +4,10 @@ use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityRepository;
 use Illuminate\Contracts\Hashing\Hasher as HasherContract;
 use Illuminate\Contracts\Auth\Authenticatable as UserContract;
-use Illuminate\Auth\UserProviderInterface;
+use Illuminate\Contracts\Auth\UserProvider;
 use ReflectionClass;
 
-class DoctrineUserProvider implements UserProviderInterface
+class DoctrineUserProvider implements UserProvider
 {
     /**
      * @var HasherContract

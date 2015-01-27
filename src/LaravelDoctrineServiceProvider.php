@@ -32,7 +32,9 @@ class LaravelDoctrineServiceProvider extends ServiceProvider
 
     public function boot()
     {
-        $this->package('mitchellvanw/laravel-doctrine', 'doctrine', __DIR__ . '/..');
+        $this->publishes([
+            __DIR__.'/../config/doctrine.php' => config_path('doctrine.php'),
+        ]);
         $this->extendAuthManager();
     }
 
@@ -85,7 +87,7 @@ class LaravelDoctrineServiceProvider extends ServiceProvider
     private function registerEntityManager()
     {
         $this->app->singleton(EntityManager::class, function ($app) {
-            $config = $app['config']['doctrine::doctrine'];
+            $config = $app['config']['doctrine'];
             // workbench: __DIR__.'/..';
 //            $basePath = __DIR__.'/..';
             $basePath = $app['path.base'];

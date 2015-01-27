@@ -11,6 +11,7 @@ class SoftDeleteableListener
         $unitOfWork = $entityManager->getUnitOfWork();
         foreach ($unitOfWork->getScheduledEntityDeletions() as $entity) {
             if ($this->isSoftDeletable($entity)) {
+
                 $metadata = $entityManager->getClassMetadata(get_class($entity));
                 $oldDeletedAt = $metadata->getFieldValue($entity, 'deletedAt');
                 if ($oldDeletedAt instanceof DateTime) {
@@ -30,6 +31,21 @@ class SoftDeleteableListener
 
     private function isSoftDeletable($entity)
     {
-        return array_key_exists('Mitch\LaravelDoctrine\Extensions\SoftDeleteable\SoftDeletesTrait', class_uses($entity));
+        return array_key_exists('Mitch\LaravelDoctrine\Extensions\SoftDeleteable\SoftDeletesTrait', $this->class_uses_deep($entity));
+    }
+
+    public function class_uses_deep($class, $autoload = true)
+    {
+        $traits = [];
+        $classes[] = $class;
+
+        $classes = array_merge(class_parents($class, $autoload), $classes);
+
+        foreach($classes as $class)
+        {
+            $traits = array_merge(class_uses($class, $autoload), $traits);
+        }
+
+        return array_unique($traits);
     }
 }
