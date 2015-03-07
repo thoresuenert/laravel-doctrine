@@ -52,6 +52,6 @@ final class Sortable implements Annotation{
 
     public function getGroupFieldName()
     {
-        return $this->index;
+        return $this->group;
     }
 }
